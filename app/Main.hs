@@ -2,11 +2,14 @@ module Main where
 
 import System.IO
 
-read_ :: IO String
-read_ = do
+input_ :: IO String
+input_ = do
     putStr "> "
     hFlush stdout
     getLine
+
+read_ :: String -> String
+read_ = id
 
 eval_ :: String -> String
 eval_ = id
@@ -16,8 +19,8 @@ print_ = putStrLn
 
 repl :: IO ()
 repl = do
-    readed <- read_
-    print_ (eval_ readed)
+    inpt <- input_
+    print_ (eval_ (read_ inpt))
     repl
 
 main :: IO ()
