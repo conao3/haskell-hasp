@@ -1,7 +1,7 @@
 module Main where
 
 import System.IO
-import Data.Char (isSpace, isDigit)
+import Data.Char (isDigit)
 
 data HaspExp = Integer Integer
                | Symbol String
@@ -26,12 +26,10 @@ tokenize (')':xs) = " ) " ++ tokenize xs
 tokenize (x:xs) = x : tokenize xs
 
 read_ :: String -> Maybe HaspExp
-read_ s
-    | all isSpace s = Nothing
-    | otherwise     = case words (tokenize s) of
-        []     -> Nothing
-        [x]    -> Just (parseValue x)
-        xs     -> Just (List (map parseValue xs))
+read_ s = case words (tokenize s) of
+    []     -> Nothing
+    [x]    -> Just (parseValue x)
+    xs     -> Just (List (map parseValue xs))
 
 eval_ :: Maybe HaspExp -> Maybe HaspExp
 eval_ Nothing = Nothing
