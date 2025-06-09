@@ -1,6 +1,9 @@
 module Main where
 
 import System.IO
+import Data.Maybe (fromMaybe)
+import Data.List (intercalate)
+import Data.Char (isSpace)
 
 input_ :: IO String
 input_ = do
@@ -8,17 +11,18 @@ input_ = do
     hFlush stdout
     getLine
 
-read_ :: String -> Maybe String
-read_ "" = Nothing
-read_ s  = Just s
+read_ :: String -> Maybe [String]
+read_ s
+    | all isSpace s = Nothing
+    | otherwise     = Just (words s)
 
-eval_ :: Maybe String -> Maybe [String]
-eval_ Nothing  = Nothing
-eval_ (Just s) = Just (words s)
+eval_ :: Maybe [String] -> Maybe String
+eval_ Nothing = Nothing
+eval_ (Just s) = Just (unwords s)
 
-print_ :: Maybe [String] -> IO ()
-print_ Nothing   = pure ()
-print_ (Just ss) = putStrLn (unwords ss)
+print_ :: Maybe String -> IO ()
+print_ Nothing  = pure ()
+print_ (Just s) = putStrLn s
 
 repl :: IO ()
 repl = do
