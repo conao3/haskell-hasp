@@ -7,6 +7,7 @@ import Data.Maybe (fromMaybe)
 data HaspExp = Integer Integer
                | Symbol String
                | List [HaspExp]
+               | Lambda [String] HaspExp
                deriving (Eq, Show)
 
 type Environment = [(String, HaspExp)]
@@ -61,6 +62,7 @@ read_ s = case tokenize s of
 eval' :: Environment -> HaspExp -> (Environment, HaspExp)
 eval' env (Integer n) = (env, Integer n)
 eval' env (Symbol s) = (env, fromMaybe (error $ "Undefined symbol: " ++ s) (lookup s env))
+eval' env (Lambda params body) = (env, Lambda params body)
 eval' env (List l) = case l of
     [] -> (env, List [])
     [Symbol "quote", v] -> (env, v)
@@ -68,11 +70,25 @@ eval' env (List l) = case l of
         case snd (eval' env condition) of
             Integer 0 -> eval' env elseExp
             _ -> eval' env thenExp
+    [Symbol "lambda", List params, body] ->
+        let paramNames = map (\p -> case p of
+                Symbol s -> s
+                _ -> error "Lambda parameters must be symbols") params
+        in (env, Lambda paramNames body)
     [Symbol "def", Symbol name, value] ->
         let (_, evaluatedValue) = eval' env value
             newEnv = (name, evaluatedValue) : env
         in (newEnv, evaluatedValue)
-    _ -> error $ "Cannot evaluate expression: " ++ show (List l)
+    (func:args) ->
+        let (_, evaluatedFunc) = eval' env func
+            evaluatedArgs = map (snd . eval' env) args
+        in case evaluatedFunc of
+            Lambda params body ->
+                if length params /= length evaluatedArgs
+                then error $ "Wrong number of arguments: expected " ++ show (length params) ++ ", got " ++ show (length evaluatedArgs)
+                else let newEnv = zip params evaluatedArgs ++ env
+                     in eval' newEnv body
+            _ -> error $ "Not a function: " ++ show evaluatedFunc
 
 eval_ :: Environment -> Maybe HaspExp -> (Environment, Maybe HaspExp)
 eval_ env Nothing = (env, Nothing)
@@ -84,6 +100,7 @@ showValue :: HaspExp -> String
 showValue (Integer n) = show n
 showValue (Symbol s) = s
 showValue (List xs) = "(" ++ unwords (map showValue xs) ++ ")"
+showValue (Lambda params _) = "#<lambda:" ++ unwords params ++ ">"
 
 print_ :: Maybe HaspExp -> IO ()
 print_ Nothing  = pure ()
