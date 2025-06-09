@@ -2,11 +2,14 @@ module Main where
 
 import System.IO
 import Text.Read (readMaybe)
+import Data.Maybe (fromMaybe)
 
 data HaspExp = Integer Integer
                | Symbol String
                | List [HaspExp]
                deriving (Eq, Show)
+
+type Environment = [(String, HaspExp)]
 
 input_ :: IO String
 input_ = do
@@ -55,21 +58,27 @@ read_ s = case tokenize s of
     [] -> Nothing
     _ -> Just (parse s)
 
-eval' :: HaspExp -> HaspExp
-eval' (Integer n) = Integer n
-eval' (Symbol s) = Symbol s
-eval' (List l) = case l of
-    [] -> List []
-    [(Symbol "quote"), v] -> v
-    [(Symbol "if"), condition, thenExp, elseExp] ->
-        case eval' condition of
-            Integer 0 -> eval' elseExp
-            _ -> eval' thenExp
-eval' v = error $ "Cannot evaluate expression: " ++ show v
+eval' :: Environment -> HaspExp -> (Environment, HaspExp)
+eval' env (Integer n) = (env, Integer n)
+eval' env (Symbol s) = (env, fromMaybe (error $ "Undefined symbol: " ++ s) (lookup s env))
+eval' env (List l) = case l of
+    [] -> (env, List [])
+    [Symbol "quote", v] -> (env, v)
+    [Symbol "if", condition, thenExp, elseExp] ->
+        case snd (eval' env condition) of
+            Integer 0 -> eval' env elseExp
+            _ -> eval' env thenExp
+    [Symbol "def", Symbol name, value] ->
+        let (_, evaluatedValue) = eval' env value
+            newEnv = (name, evaluatedValue) : env
+        in (newEnv, evaluatedValue)
+    _ -> error $ "Cannot evaluate expression: " ++ show (List l)
 
-eval_ :: Maybe HaspExp -> Maybe HaspExp
-eval_ Nothing = Nothing
-eval_ (Just v) = Just (eval' v)
+eval_ :: Environment -> Maybe HaspExp -> (Environment, Maybe HaspExp)
+eval_ env Nothing = (env, Nothing)
+eval_ env (Just v) =
+    let (newEnv, result) = eval' env v
+    in (newEnv, Just result)
 
 showValue :: HaspExp -> String
 showValue (Integer n) = show n
@@ -80,11 +89,12 @@ print_ :: Maybe HaspExp -> IO ()
 print_ Nothing  = pure ()
 print_ (Just v) = putStrLn (showValue v)
 
-repl :: IO ()
-repl = do
+repl :: Environment -> IO ()
+repl env = do
     inpt <- input_
-    print_ (eval_ (read_ inpt))
-    repl
+    let (newEnv, result) = eval_ env (read_ inpt)
+    print_ result
+    repl newEnv
 
 main :: IO ()
-main = repl
+main = repl []
