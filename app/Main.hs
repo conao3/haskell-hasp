@@ -1,7 +1,6 @@
 module Main where
 
 import System.IO
-import Data.Char (isDigit)
 import Text.Read (readMaybe)
 
 data HaspExp = Integer Integer
@@ -16,15 +15,15 @@ input_ = do
     getLine
 
 atom :: String -> HaspExp
-atom token = 
+atom token =
     case readMaybe token :: Maybe Integer of
         Just n -> Integer n
         Nothing -> Symbol token
 
 readFromTokens :: [String] -> ([String], HaspExp)
 readFromTokens [] = error "unexpected EOF while reading"
-readFromTokens (token:tokens) 
-    | token == "(" = 
+readFromTokens (token:tokens)
+    | token == "(" =
         let (rest, lst) = readListExp tokens
         in (rest, List lst)
     | token == ")" = error "unexpected )"
@@ -33,7 +32,7 @@ readFromTokens (token:tokens)
 readListExp :: [String] -> ([String], [HaspExp])
 readListExp [] = error "unexpected EOF while reading"
 readListExp (")":rest) = (rest, [])
-readListExp tokens = 
+readListExp tokens =
     let (rest1, expr) = readFromTokens tokens
         (rest2, exprs) = readListExp rest1
     in (rest2, expr : exprs)
@@ -56,9 +55,21 @@ read_ s = case tokenize s of
     [] -> Nothing
     _ -> Just (parse s)
 
+eval' :: HaspExp -> HaspExp
+eval' (Integer n) = Integer n
+eval' (Symbol s) = Symbol s
+eval' (List l) = case l of
+    [] -> List []
+    [(Symbol "quote"), v] -> v
+    [(Symbol "if"), condition, thenExp, elseExp] ->
+        case eval' condition of
+            Integer 0 -> eval' elseExp
+            _ -> eval' thenExp
+eval' v = error $ "Cannot evaluate expression: " ++ show v
+
 eval_ :: Maybe HaspExp -> Maybe HaspExp
 eval_ Nothing = Nothing
-eval_ (Just v) = Just v
+eval_ (Just v) = Just (eval' v)
 
 showValue :: HaspExp -> String
 showValue (Integer n) = show n
