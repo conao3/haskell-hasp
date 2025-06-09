@@ -2,6 +2,7 @@ module Main where
 
 import System.IO
 import Data.Char (isDigit)
+import Text.Read (readMaybe)
 
 data HaspExp = Integer Integer
                | Symbol String
@@ -14,22 +15,46 @@ input_ = do
     hFlush stdout
     getLine
 
-parseValue :: String -> HaspExp
-parseValue s
-    | all isDigit s = Integer (read s)
-    | otherwise     = Symbol s
+atom :: String -> HaspExp
+atom token = 
+    case readMaybe token :: Maybe Integer of
+        Just n -> Integer n
+        Nothing -> Symbol token
 
-tokenize :: String -> String
-tokenize [] = []
-tokenize ('(':xs) = " ( " ++ tokenize xs
-tokenize (')':xs) = " ) " ++ tokenize xs
-tokenize (x:xs) = x : tokenize xs
+readFromTokens :: [String] -> ([String], HaspExp)
+readFromTokens [] = error "unexpected EOF while reading"
+readFromTokens (token:tokens) 
+    | token == "(" = 
+        let (rest, lst) = readListExp tokens
+        in (rest, List lst)
+    | token == ")" = error "unexpected )"
+    | otherwise = (tokens, atom token)
+
+readListExp :: [String] -> ([String], [HaspExp])
+readListExp [] = error "unexpected EOF while reading"
+readListExp (")":rest) = (rest, [])
+readListExp tokens = 
+    let (rest1, expr) = readFromTokens tokens
+        (rest2, exprs) = readListExp rest1
+    in (rest2, expr : exprs)
+
+parse :: String -> HaspExp
+parse s = case readFromTokens (tokenize s) of
+    ([], expr) -> expr
+    (_, _) -> error "Extra tokens after expression"
+
+tokenize :: String -> [String]
+tokenize s = words $ concatMap addSpaces s
+  where
+    addSpaces '(' = " ( "
+    addSpaces ')' = " ) "
+    addSpaces c = [c]
 
 read_ :: String -> Maybe HaspExp
-read_ s = case words (tokenize s) of
-    []     -> Nothing
-    [x]    -> Just (parseValue x)
-    xs     -> Just (List (map parseValue xs))
+read_ "" = Nothing
+read_ s = case tokenize s of
+    [] -> Nothing
+    _ -> Just (parse s)
 
 eval_ :: Maybe HaspExp -> Maybe HaspExp
 eval_ Nothing = Nothing
