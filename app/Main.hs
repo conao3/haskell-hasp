@@ -12,13 +12,13 @@ read_ :: String -> Maybe String
 read_ "" = Nothing
 read_ s  = Just s
 
-eval_ :: Maybe String -> Maybe String
+eval_ :: Maybe String -> Maybe [String]
 eval_ Nothing  = Nothing
-eval_ (Just s) = Just s
+eval_ (Just s) = Just (words s)
 
-print_ :: Maybe String -> IO ()
-print_ Nothing  = pure ()
-print_ (Just s) = putStrLn s
+print_ :: Maybe [String] -> IO ()
+print_ Nothing   = pure ()
+print_ (Just ss) = putStrLn (unwords ss)
 
 repl :: IO ()
 repl = do
