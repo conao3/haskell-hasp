@@ -8,14 +8,17 @@ input_ = do
     hFlush stdout
     getLine
 
-read_ :: String -> String
-read_ = id
+read_ :: String -> Maybe String
+read_ "" = Nothing
+read_ s  = Just s
 
-eval_ :: String -> String
-eval_ = id
+eval_ :: Maybe String -> Maybe String
+eval_ Nothing  = Nothing
+eval_ (Just s) = Just s
 
-print_ :: String -> IO ()
-print_ = putStrLn
+print_ :: Maybe String -> IO ()
+print_ Nothing  = pure ()
+print_ (Just s) = putStrLn s
 
 repl :: IO ()
 repl = do
